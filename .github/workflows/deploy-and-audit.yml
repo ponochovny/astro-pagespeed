@@ -1,0 +1,64 @@
+name: Deploy to GitHub Pages and Run PageSpeed Audit
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-config-file: package.json
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Astro site
+        run: npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  pagespeed-audit:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Audit Mobile PageSpeed
+        uses: foo-software/pagespeed-insights-action@v2
+        with:
+          url: 'https://ponochovny.github.io/astro-pagespeed/'
+          strategy: mobile
+
+      - name: Audit Desktop PageSpeed
+        uses: foo-software/pagespeed-insights-action@v2
+        with:
+          url: 'https://ponochovny.github.io/astro-pagespeed/'
+          strategy: desktop
