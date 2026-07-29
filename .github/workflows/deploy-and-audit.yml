@@ -68,21 +68,33 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            const path = '.lighthouseci/manifest.json';
 
-            if (!fs.existsSync(path)) {
+            const manifestPath = '.lighthouseci/manifest.json';
+            const linksPath = '.lighthouseci/links.json';
+
+            if (!fs.existsSync(manifestPath)) {
               core.setFailed('Lighthouse results file not found.');
               return;
             }
 
-            const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+            const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+            let links = {};
+
+            if (fs.existsSync(linksPath)) {
+              try {
+                links = JSON.parse(fs.readFileSync(linksPath, 'utf8'));
+              } catch (e) {
+                console.log('Unable to parse links.json', e);
+              }
+            }
+
             if (!manifest.length) return;
 
-            let summaryMarkdown = '## ⚡ Google PageSpeed / Lighthouse Results\n\n';
-            summaryMarkdown += '| URL | Performance | Accessibility | Best Practices | SEO | Detailed Report |\n';
+            let summaryMarkdown = '## ⚡ Results of Google PageSpeed / Lighthouse\n\n';
+            summaryMarkdown += '| URL | Performance | Accessibility | Best Practices | SEO | Full HTML report |\n';
             summaryMarkdown += '| --- | :---: | :---: | :---: | :---: | :---: |\n';
 
-            manifest.forEach(run => {
+            manifest.forEach((run, index) => {
               const summary = run.summary;
               const formatScore = (val) => {
                 const score = Math.round(val * 100);
@@ -94,7 +106,15 @@ jobs:
               const a11y = formatScore(summary.accessibility);
               const bp = formatScore(summary['best-practices']);
               const seo = formatScore(summary.seo);
-              const reportLink = run.htmlUrl ? `[View HTML Report](${run.htmlUrl})` : 'N/A';
+
+              let reportUrl = links[run.url];
+              if (Array.isArray(reportUrl)) {
+                reportUrl = reportUrl[index] || reportUrl[0];
+              }
+
+              const reportLink = reportUrl 
+                ? `[🔍 Open Google report](${reportUrl})` 
+                : (run.htmlUrl ? `[🔍 Open report](${run.htmlUrl})` : 'N/A');
 
               summaryMarkdown += `| \`${run.url}\` | ${perf} | ${a11y} | ${bp} | ${seo} | ${reportLink} |\n`;
             });
