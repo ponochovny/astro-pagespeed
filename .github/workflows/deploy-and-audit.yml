@@ -62,20 +62,41 @@ jobs:
           uploadArtifacts: true
           temporaryPublicStorage: true
 
-  pagespeed-audit:
-    needs: build-and-deploy
-    runs-on: ubuntu-latest
-    steps:
-      - name: PageSpeed Insights Audit (Mobile)
-        uses: fcorti/mktg-pagespeed-action@v1.0.1
+      - name: Output PageSpeed Summary
+        if: always()
+        uses: actions/github-script@v7
         with:
-          url: 'https://ponochovny.github.io/astro-pagespeed/'
-          strategy: 'mobile'
-          category: 'performance'
+          script: |
+            const fs = require('fs');
+            const path = '.lighthouseci/manifest.json';
 
-      - name: PageSpeed Insights Audit (Desktop)
-        uses: fcorti/mktg-pagespeed-action@v1.0.1
-        with:
-          url: 'https://ponochovny.github.io/astro-pagespeed/'
-          strategy: 'desktop'
-          category: 'performance'
+            if (!fs.existsSync(path)) {
+              core.setFailed('Lighthouse results file not found.');
+              return;
+            }
+
+            const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+            if (!manifest.length) return;
+
+            let summaryMarkdown = '## ⚡ Google PageSpeed / Lighthouse Results\n\n';
+            summaryMarkdown += '| URL | Performance | Accessibility | Best Practices | SEO | Detailed Report |\n';
+            summaryMarkdown += '| --- | :---: | :---: | :---: | :---: | :---: |\n';
+
+            manifest.forEach(run => {
+              const summary = run.summary;
+              const formatScore = (val) => {
+                const score = Math.round(val * 100);
+                const emoji = score >= 90 ? '🟢' : score >= 50 ? '🟠' : '🔴';
+                return `${emoji} **${score}**`;
+              };
+
+              const perf = formatScore(summary.performance);
+              const a11y = formatScore(summary.accessibility);
+              const bp = formatScore(summary['best-practices']);
+              const seo = formatScore(summary.seo);
+              const reportLink = run.htmlUrl ? `[View HTML Report](${run.htmlUrl})` : 'N/A';
+
+              summaryMarkdown += `| \`${run.url}\` | ${perf} | ${a11y} | ${bp} | ${seo} | ${reportLink} |\n`;
+            });
+
+            await core.summary.addRaw(summaryMarkdown).write();
