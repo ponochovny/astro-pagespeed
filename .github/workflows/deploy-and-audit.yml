@@ -47,10 +47,27 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+  lighthouse-audit:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Lighthouse Audit
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: |
+            https://ponochovny.github.io/astro-pagespeed/
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
   pagespeed-audit:
     needs: build-and-deploy
     runs-on: ubuntu-latest
     steps:
+      - name: Wait for GitHub Pages DNS / CDN update
+        run: sleep 15
       - name: Audit Mobile PageSpeed
         uses: foo-software/pagespeed-insights-action@v2
         with:
