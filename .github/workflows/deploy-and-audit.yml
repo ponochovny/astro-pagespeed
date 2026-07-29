@@ -66,16 +66,16 @@ jobs:
     needs: build-and-deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Wait for GitHub Pages DNS / CDN update
-        run: sleep 15
-      - name: Audit Mobile PageSpeed
-        uses: foo-software/pagespeed-insights-action@v2
+      - name: PageSpeed Insights Audit (Mobile)
+        uses: fcorti/mktg-pagespeed-action@v1.0.1
         with:
           url: 'https://ponochovny.github.io/astro-pagespeed/'
-          strategy: mobile
+          strategy: 'mobile'
+          category: 'performance'
 
-      - name: Audit Desktop PageSpeed
-        uses: foo-software/pagespeed-insights-action@v2
+      - name: PageSpeed Insights Audit (Desktop)
+        uses: fcorti/mktg-pagespeed-action@v1.0.1
         with:
           url: 'https://ponochovny.github.io/astro-pagespeed/'
-          strategy: desktop
+          strategy: 'desktop'
+          category: 'performance'
